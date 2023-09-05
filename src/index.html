@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.0/dist/cdn.min.js"
+    ></script>
+    <!-- <script src="./install.js"></script> -->
+  </head>
+  <body class=" p-4">
+    <!--  -->
+    <div class="flex w-full justify-between">
+      <h1 class="text-xl font-bold text-gray-900">Frontend Spotlight - NPM Package Search</h1>
+      <div>
+        <button class="bg-gray-900 px-4 py-2 rounded text-white text-sm" id="updateButton">Update All</button>
+      </div>
+    </div>
+    <input class="p-2 rounded border mt-2" type="text" id="searchInput" placeholder="Enter package name" /> <br>
+    <button class="bg-gray-900 px-4 py-2 rounded text-white text-sm mt-4" id="searchButton">Search</button>
+    <div id="loading">Loading...</div>
+
+    <ul id="results"></ul>
+  </body>
+  <script>
+    const searchInput = document.getElementById("searchInput");
+    const searchButton = document.getElementById("searchButton");
+    const updateButton = document.getElementById("updateButton");
+    const resultsList = document.getElementById("results");
+    const loadingIndicator = document.getElementById("loading");
+    loadingIndicator.style.display = 'none'
+    let typingTimer;
+    const doneTypingInterval = 500;
+    // searchInput.addEventListener("input", function () {
+    //   clearTimeout(typingTimer);
+    //   typingTimer = setTimeout(
+    //     searchNpmPackage(searchInput.value.trim()),
+    //     doneTypingInterval
+    //   );
+    // });
+    // UPDATE
+    updateButton.addEventListener('click', () => {
+      fetch('http://localhost:3197/update')
+    })
+    searchButton.addEventListener("click", () => {
+      const packageName = searchInput.value.trim();
+
+      if (packageName === "") {
+        alert("Please enter a package name");
+        return;
+      }
+      searchNpmPackage(packageName);
+    });
+
+    function searchNpmPackage(packageName) {
+      loadingIndicator.style.display = 'block'
+      // Clear previous search results
+      resultsList.innerHTML = "";
+      // Make a request to the NPM API
+      fetch(`https://registry.npmjs.org/${packageName}`)
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.error) {
+            resultsList.innerHTML = `<li>${data.error}</li>`;
+          } else {
+            const packageInfo = data.versions[Object.keys(data.versions)[Object.keys(data.versions).length-1]];
+            displayPackageInfo(packageInfo);
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching data from NPM API:", error);
+        })
+        .finally(() => {
+          loadingIndicator.style.display = 'none'
+        })
+    }
+
+    function displayPackageInfo(packageInfo) {
+      // console.log(packageInfo);
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <strong>Name:</strong> ${packageInfo.name}<br>
+        <strong>Version:</strong> ${packageInfo.version}<br>
+        <button data-pkg="${packageInfo.name}" class="bg-gray-900 px-4 py-2 rounded text-white text-sm" id="installBtn" x-data="{ 
+          async install() {
+          await fetch('http://localhost:3197/cmd?pkg=${packageInfo.name}')
+        } }"  @click="install()">Install</button>
+    `;
+      resultsList.appendChild(li);
+    }
+    //
+    const installBtn = document.getElementById("installBtn");
+    if (installBtn != undefined || installBtn != null) {
+      console.log("OK");
+      installBtn.addEventListener("click", async () => {
+        alert("Installing");
+        await fetch(`http://localhost:3197/cmd`).then((res) => {
+          console.log("->", res.json());
+        });
+      });
+    }
+  </script>
+</html>
